@@ -55,6 +55,23 @@ class UserProfile(BaseModel):
     medical_conditions: Optional[List[str]] = []
 
 # API Routes
+@app.post("/api/auth/register")
+async def register_user(profile: UserProfile):
+    existing = await db.users.find_one({"user_id": profile.user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    result = await db.users.insert_one(profile.dict())
+    return {"message": "User registered successfully", "user_id": profile.user_id}
+
+@app.post("/api/auth/login")
+async def login_user(user_id: str):
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["_id"] = str(user["_id"])
+    return {"message": "Login successful", "user": user}
+
 @app.post("/api/users")
 async def create_user(profile: UserProfile):
     existing = await db.users.find_one({"user_id": profile.user_id})
@@ -123,56 +140,6 @@ async def get_diary_entries(user_id: str, limit: int = 10):
         doc["_id"] = str(doc["_id"])
         entries.append(doc)
     return entries
-
-@app.get("/api/diary/entry/{entry_id}")
-async def get_diary_entry(entry_id: str):
-    from bson import ObjectId
-    try:
-        entry = await db.diary.find_one({"_id": ObjectId(entry_id)})
-        if not entry:
-            raise HTTPException(status_code=404, detail="Entry not found")
-        entry["_id"] = str(entry["_id"])
-        return entry
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid entry ID")
-
-@app.put("/api/diary/entry/{entry_id}")
-async def update_diary_entry(entry_id: str, entry: DiaryEntry):
-    from bson import ObjectId
-    try:
-        existing = await db.diary.find_one({"_id": ObjectId(entry_id)})
-        if not existing:
-            raise HTTPException(status_code=404, detail="Entry not found")
-        
-        update_data = entry.dict()
-        update_data["updated_at"] = datetime.now()
-        
-        result = await db.diary.update_one(
-            {"_id": ObjectId(entry_id)},
-            {"$set": update_data}
-        )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="No changes made")
-        
-        return {"message": "Diary entry updated successfully", "id": entry_id}
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid entry ID")
-
-@app.delete("/api/diary/entry/{entry_id}")
-async def delete_diary_entry(entry_id: str):
-    from bson import ObjectId
-    try:
-        result = await db.diary.delete_one({"_id": ObjectId(entry_id)})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Entry not found")
-        return {"message": "Diary entry deleted successfully"}
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid entry ID")
 
 @app.post("/api/recommendations/{user_id}")
 async def get_recommendations(user_id: str):
