@@ -7,20 +7,20 @@ Simple authentication with username - Register new users or login to existing ac
 ![alt text](/doc/image.png)
 
 
-![alt text](/doc/image.png)
+![alt text](/doc/image2.png)
 
 ### User Profile Management
 View and edit your health profile including age, weight, height, allergies, and medical conditions
-![alt text](/doc/image.png)
+![alt text](/doc/image3.png)
 
 
 ### Daily Health Diary
 Track meals, health conditions with severity ratings, physical activities, and notes.
-![alt text](/doc/image.png)
+![alt text](/doc/image4.png)
 
 ### AI-Powered Recommendations
 Get personalized menu plans, exercise suggestions, health insights, and actionable advice from Gemini AI.
-![alt text](image.png)
+![alt text](image5.png)
 ## Key Features
 ### 🔐 User Authentication
 
