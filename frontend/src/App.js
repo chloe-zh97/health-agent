@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Activity, Utensils, Heart, TrendingUp, Plus, User, LogOut, Edit2, Save, X } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export default function HealthAIAgent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
