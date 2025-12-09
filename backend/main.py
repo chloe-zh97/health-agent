@@ -16,7 +16,10 @@ app = FastAPI(title="Health AI Agent")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Will restrict after deployment
+    allow_origins=[
+        "http://localhost:3000",
+        "https://health-ai-frontend.onrender.com"  # Add your actual URL
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
