@@ -18,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://health-ai-frontend.onrender.com"  # Add your actual URL
+        "https://health-agent-frontend-nuk2.onrender.com/"  # Add your actual URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
