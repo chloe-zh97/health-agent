@@ -4,10 +4,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
+from anthropic import Anthropic
 
 load_dotenv()
 
@@ -31,9 +31,8 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.health_agent
 
-# Gemini setup
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+claude_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
 
 # Pydantic models
 class HealthCondition(BaseModel):
@@ -191,8 +190,15 @@ Based on this health data, please provide:
 Format the response in JSON with these keys: menu, exercise, insights, recommendations"""
     
     try:
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
+        response = claude_client.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+        )
+        # Claude returns a list of content blocks
+        response_text = response.content[0].text
         
         # Try to parse and format JSON response
         formatted_text = response_text
