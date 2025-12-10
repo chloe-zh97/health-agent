@@ -11,6 +11,9 @@ export default function HealthAIAgent() {
   const [recommendation, setRecommendation] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [selectedHistory, setSelectedHistory] = useState(null);
+
   
   // Auth state
   const [authMode, setAuthMode] = useState('login');
@@ -39,7 +42,10 @@ export default function HealthAIAgent() {
     if (isLoggedIn && currentUser) {
       loadDiaryEntries();
     }
-  }, [isLoggedIn, currentUser]);
+    if (activeTab === "recommendations") {
+      fetchHistory();
+    }
+  }, [isLoggedIn, currentUser, activeTab]);
 
   const loadDiaryEntries = async () => {
     try {
@@ -245,6 +251,17 @@ export default function HealthAIAgent() {
       setLoading(false);
     }
   };
+
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/recommendations/${currentUser.user_id}/history`);
+      const data = await response.json();
+      setHistory(data);
+    } catch (err) {
+      console.error("Failed to load history", err);
+    }
+  };
+
 
   // Login/Register Screen
   if (!isLoggedIn) {
@@ -666,34 +683,106 @@ export default function HealthAIAgent() {
         )}
 
         {activeTab === 'recommendations' && (
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">AI Health Recommendations</h2>
-              <button
-                onClick={getRecommendations}
-                disabled={loading}
-                className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                <TrendingUp className="w-5 h-5" />
-                {loading ? 'Generating...' : 'Get Recommendations'}
-              </button>
+  <div className="bg-white rounded-2xl shadow-lg p-8">
+    
+    {/* HEADER */}
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-gray-800">AI Health Recommendations</h2>
+
+      <button
+        onClick={getRecommendations}
+        disabled={loading}
+        className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+      >
+        <TrendingUp className="w-5 h-5" />
+        {loading ? 'Generating...' : 'Get Recommendations'}
+      </button>
+    </div>
+
+    {/* MAIN RECOMMENDATION DISPLAY */}
+    {recommendation ? (
+      <div className="bg-gray-50 rounded-lg p-6 mb-10">
+        <pre className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">
+          {recommendation}
+        </pre>
+      </div>
+    ) : (
+      <div className="text-center py-12 mb-10">
+        <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+        <p className="text-gray-500">Click "Get Recommendations" to generate personalized health advice</p>
+        <p className="text-sm text-gray-400 mt-2">Make sure you have added diary entries first</p>
+      </div>
+    )}
+
+    {/* ================================
+          RECOMMENDATION HISTORY
+       ================================ */}
+    <h3 className="text-xl font-bold text-gray-800 mb-4">📚 Recommendation History</h3>
+
+    {history.length > 0 ? (
+      <div className="space-y-4">
+        {history.map(item => (
+          <div
+            key={item._id}
+            className="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition cursor-pointer"
+            onClick={() => setSelectedHistory(item)}
+          >
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-500">
+                {new Date(item.created_at).toLocaleString()}
+              </span>
             </div>
-            
-            {recommendation ? (
-              <div className="bg-gray-50 rounded-lg p-6">
-                <pre className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">
-                  {recommendation}
-                </pre>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500">Click "Get Recommendations" to generate personalized health advice</p>
-                <p className="text-sm text-gray-400 mt-2">Make sure you have added diary entries first</p>
-              </div>
-            )}
+
+            {/* Preview (first few lines only) */}
+            <pre className="whitespace-pre-wrap text-gray-800 text-sm line-clamp-3">
+              {item.recommendation}
+            </pre>
+
+            <p className="text-indigo-600 text-sm font-medium mt-2">
+              Click to view full content →
+            </p>
           </div>
-        )}
+        ))}
+      </div>
+    ) : (
+      <p className="text-gray-500">No past recommendations yet.</p>
+    )}
+
+    {/* ================================
+          FULLSCREEN MODAL FOR HISTORY
+       ================================ */}
+    {selectedHistory && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
+          
+          {/* CLOSE BUTTON */}
+          <button
+            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl"
+            onClick={() => setSelectedHistory(null)}
+          >
+            ✕
+          </button>
+
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            Full Recommendation
+          </h3>
+
+          <p className="text-sm text-gray-500 mb-4">
+            {new Date(selectedHistory.created_at).toLocaleString()}
+          </p>
+
+          <div className="prose max-w-none">
+            <pre className="whitespace-pre-wrap text-gray-800 text-sm">
+              {selectedHistory.recommendation}
+            </pre>
+          </div>
+        </div>
+      </div>
+    )}
+
+  </div>
+)}
+
       </div>
     </div>
   );
