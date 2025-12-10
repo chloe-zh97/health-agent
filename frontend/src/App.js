@@ -11,6 +11,8 @@ export default function HealthAIAgent() {
   const [recommendation, setRecommendation] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [history, setHistory] = useState([]);
+
   
   // Auth state
   const [authMode, setAuthMode] = useState('login');
@@ -39,7 +41,10 @@ export default function HealthAIAgent() {
     if (isLoggedIn && currentUser) {
       loadDiaryEntries();
     }
-  }, [isLoggedIn, currentUser]);
+    if (activeTab === "recommendations") {
+      fetchHistory();
+    }
+  }, [isLoggedIn, currentUser, activeTab]);
 
   const loadDiaryEntries = async () => {
     try {
@@ -245,6 +250,17 @@ export default function HealthAIAgent() {
       setLoading(false);
     }
   };
+
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/recommendations/${currentUser.user_id}/history`);
+      const data = await response.json();
+      setHistory(data);
+    } catch (err) {
+      console.error("Failed to load history", err);
+    }
+  };
+
 
   // Login/Register Screen
   if (!isLoggedIn) {
@@ -692,6 +708,39 @@ export default function HealthAIAgent() {
                 <p className="text-sm text-gray-400 mt-2">Make sure you have added diary entries first</p>
               </div>
             )}
+
+            {/* History Section */}
+    <div className="mt-10">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">
+        Recommendation History
+      </h3>
+
+      {history.length > 0 ? (
+        <div className="space-y-4">
+          {history.map((item) => (
+            <div
+              key={item._id}
+              className="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-500">
+                  {new Date(item.created_at).toLocaleString()}
+                </span>
+              </div>
+
+              <pre className="whitespace-pre-wrap text-gray-800 text-sm">
+                {item.recommendation.substring(0, 200)}...
+              </pre>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500">No past recommendations found.</p>
+      )}
+
+
+            </div>
+
           </div>
         )}
       </div>
