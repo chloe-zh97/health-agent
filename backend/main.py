@@ -4,10 +4,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
+from anthropic import Anthropic
 
 load_dotenv()
 
@@ -31,9 +31,8 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.health_agent
 
-# Gemini setup
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+claude_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
 
 # Pydantic models
 class HealthCondition(BaseModel):
@@ -188,89 +187,25 @@ Based on this health data, please provide:
 3. Health insights and patterns you notice
 4. Specific recommendations to address recurring health issues
 
-Format the response in JSON with these keys: menu, exercise, insights, recommendations"""
-    
+"""
     try:
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
+        response = claude_client.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+        )
+        # Claude returns a list of content blocks
+        html_output = response.content[0].text.strip()
         
-        # Try to parse and format JSON response
-        formatted_text = response_text
-        try:
-            # Remove markdown code blocks if present
-            clean_json = response_text.strip()
-            clean_json = clean_json.replace('```json\n', '').replace('```\n', '').replace('```', '')
-            parsed = json.loads(clean_json)
-            
-            # Format the JSON into readable text
-            formatted_parts = []
-            
-            # Menu section
-            if 'menu' in parsed:
-                formatted_parts.append("=" * 60)
-                formatted_parts.append("📋 DAILY MENU PLAN")
-                formatted_parts.append("=" * 60)
-                menu = parsed['menu']
-                if 'breakfast' in menu:
-                    formatted_parts.append(f"\n☕ Breakfast:\n{menu['breakfast']}")
-                if 'lunch' in menu:
-                    formatted_parts.append(f"\n☀️ Lunch:\n{menu['lunch']}")
-                if 'dinner' in menu:
-                    formatted_parts.append(f"\n🌙 Dinner:\n{menu['dinner']}")
-                if 'snacks' in menu:
-                    formatted_parts.append(f"\n🍎 Snacks:")
-                    if isinstance(menu['snacks'], list):
-                        for snack in menu['snacks']:
-                            formatted_parts.append(f"  • {snack}")
-                    else:
-                        formatted_parts.append(f"  {menu['snacks']}")
-            
-            # Exercise section
-            if 'exercise' in parsed:
-                formatted_parts.append("\n" + "=" * 60)
-                formatted_parts.append("💪 EXERCISE RECOMMENDATIONS")
-                formatted_parts.append("=" * 60)
-                for key, value in parsed['exercise'].items():
-                    formatted_parts.append(f"\n{key.replace('_', ' ').title()}:")
-                    formatted_parts.append(f"{value}")
-            
-            # Insights section
-            if 'insights' in parsed:
-                formatted_parts.append("\n" + "=" * 60)
-                formatted_parts.append("💡 HEALTH INSIGHTS")
-                formatted_parts.append("=" * 60)
-                for idx, insight in enumerate(parsed['insights'], 1):
-                    if isinstance(insight, dict):
-                        formatted_parts.append(f"\n{idx}. {insight.get('finding', f'Insight {idx}')}")
-                        formatted_parts.append(f"   {insight.get('explanation', '')}")
-                    else:
-                        formatted_parts.append(f"\n{idx}. {insight}")
-            
-            # Recommendations section
-            if 'recommendations' in parsed:
-                formatted_parts.append("\n" + "=" * 60)
-                formatted_parts.append("⚠️ ACTION RECOMMENDATIONS")
-                formatted_parts.append("=" * 60)
-                for idx, rec in enumerate(parsed['recommendations'], 1):
-                    if isinstance(rec, dict):
-                        formatted_parts.append(f"\n{idx}. {rec.get('area', f'Recommendation {idx}')}")
-                        formatted_parts.append(f"   {rec.get('suggestion', '')}")
-                    else:
-                        formatted_parts.append(f"\n{idx}. {rec}")
-            
-            formatted_text = "\n".join(formatted_parts)
-        except json.JSONDecodeError:
-            # If JSON parsing fails, keep original text
-            pass
-        
-        # Store recommendation
+        # Store HTML directly
         await db.recommendations.insert_one({
             "user_id": user_id,
-            "recommendation": formatted_text,
+            "recommendation": html_output,
             "created_at": datetime.now()
         })
-        
-        return {"recommendation": formatted_text}
+        return {"recommendation": html_output}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
 
